@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#17122B">
+<title>Эмодзи-студия</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box}
+:root{
+  color-scheme:dark;
+  --bg:#17122B; --panel:#211A3F; --panel2:#2C2352; --line:#43377A;
+  --text:#F5F1FF; --muted:#A99DD8; --lemon:#FFD23F; --coral:#FF6B8B; --ink:#2A1F3D;
+}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:'Fredoka',ui-rounded,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  overscroll-behavior:none;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:3px solid var(--lemon);outline-offset:2px}
+#app{height:100%;max-width:560px;margin:0 auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px}
+h1{font-size:19px;font-weight:700;margin:0}
+.icons{display:flex;gap:6px;align-items:center}
+.ib{width:38px;height:38px;border-radius:12px;background:var(--panel2);display:grid;place-items:center}
+.ib:disabled{opacity:.35}
+.ib svg{width:20px;height:20px;stroke:var(--text);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.save{height:38px;padding:0 16px;border-radius:12px;background:var(--lemon);color:var(--ink);font-weight:700}
+
+#stage{display:grid;place-items:center;min-height:0;padding:4px 12px}
+#board{position:relative;border-radius:24px;overflow:hidden;
+  background:repeating-conic-gradient(#2c2352 0 25%,#362c64 0 50%) 0 0/26px 26px;
+  box-shadow:0 0 0 3px var(--lemon)}
+#cv{display:block;touch-action:none}
+#empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:28px;
+  color:var(--muted);font-size:17px;line-height:1.35;pointer-events:none}
+#empty[hidden]{display:none}
+
+#strip{background:var(--panel2);padding:8px 12px 8px;border-top:1px solid var(--line)}
+#strip[hidden]{display:none}
+.srow{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+.srow:last-child{margin-bottom:0}
+.srow label{flex:1;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+input[type=range]{width:100%;accent-color:var(--lemon);margin:0;height:22px}
+.btns button{flex:1;height:32px;border-radius:10px;background:var(--panel);font-size:13px;font-weight:600}
+.btns .danger{color:var(--coral)}
+.sw-row{overflow-x:auto;gap:8px;padding:2px}
+.sw-row[hidden]{display:none}
+.sw{flex:0 0 28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.28);padding:0}
+.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--lemon)}
+.sw.custom{position:relative;overflow:hidden;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+.sw.custom input{position:absolute;inset:-8px;width:48px;height:48px;opacity:0}
+
+#panel{overflow-y:auto;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+.chips{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto}
+.chip{flex:0 0 auto;padding:5px 12px;border-radius:999px;background:var(--panel2);font-size:14px;font-weight:600}
+.chip.on{background:var(--lemon);color:var(--ink)}
+.tiles{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.tile{flex:0 0 64px;height:64px;border-radius:16px;background:var(--panel2);border:2px solid var(--line);
+  display:grid;place-items:center;padding:0}
+.tile canvas{width:56px;height:56px}
+.tile:active{transform:scale(.94)}
+.lbl{font-size:12px;color:var(--muted);margin:2px 0 4px;display:block}
+.field{flex:1;min-width:0;height:38px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);
+  color:var(--text);font:inherit;font-size:16px;padding:0 12px;-webkit-user-select:text;user-select:text}
+.addbtn{height:38px;padding:0 14px;border-radius:12px;background:var(--lemon);color:var(--ink);font-weight:700}
+
+#tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:6px 8px 8px;background:var(--bg)}
+#tabs button{padding:8px 0;border-radius:12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+#tabs button.on{background:var(--lemon);color:var(--ink)}
+
+#ov{position:fixed;inset:0;background:rgba(14,10,28,.86);display:none;place-items:center;padding:16px;z-index:10}
+#ov.show{display:grid}
+.sheet{width:min(100%,420px);background:var(--panel);border-radius:24px;padding:16px;border:2px solid var(--line)}
+.sheet h2{margin:0 0 10px;font-size:20px}
+.pre{border-radius:18px;background:repeating-conic-gradient(#2c2352 0 25%,#362c64 0 50%) 0 0/22px 22px;
+  display:grid;place-items:center;padding:12px;margin-bottom:12px}
+.pre img{width:min(100%,260px);aspect-ratio:1;image-rendering:auto;-webkit-user-select:auto;user-select:auto;
+  -webkit-touch-callout:default}
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg .chip{flex:1;text-align:center;padding:5px 4px;font-size:12.5px}.seg{flex-wrap:wrap}
+.acts{display:flex;gap:8px}
+.acts a,.acts button{flex:1;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:700;text-decoration:none;font-size:15px}
+.primary{background:var(--lemon);color:var(--ink)}
+.ghost{background:var(--panel2);color:var(--text)}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0;line-height:1.35}
+@media (prefers-reduced-motion:reduce){.tile:active{transform:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Эмодзи-студия</h1>
+    <div class="icons">
+      <button class="ib" id="bUndo" aria-label="Отменить"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+      <button class="ib" id="bRedo" aria-label="Вернуть"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+      <button class="ib" id="bRand" aria-label="Случайный эмодзи"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h.01M15 9h.01M12 12h.01M9 15h.01M15 15h.01"/></svg></button>
+      <button class="ib" id="bClear" aria-label="Очистить"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+      <button class="save" id="bSave">Сохранить</button>
+    </div>
+  </header>
+
+  <div id="stage">
+    <div id="board">
+      <canvas id="cv"></canvas>
+      <div id="empty">Выбери форму внизу и добавь лицо.<br>Или нажми кубик сверху.</div>
+    </div>
+  </div>
+
+  <div id="strip" hidden>
+    <div class="srow">
+      <label>Размер<input id="rngS" type="range" min="10" max="800" step="1"></label>
+      <label>Поворот<input id="rngR" type="range" min="-180" max="180" step="1"></label>
+    </div>
+    <div class="srow btns">
+      <button data-act="flip">Зеркало</button>
+      <button data-act="dup">Копия</button>
+      <button data-act="up">Выше</button>
+      <button data-act="down">Ниже</button>
+      <button data-act="del" class="danger">Удалить</button>
+    </div>
+    <div class="srow sw-row" id="stripColors"></div>
+  </div>
+
+  <div id="panel"></div>
+
+  <nav id="tabs">
+    <button data-tab="base">Основа</button>
+    <button data-tab="face">Лицо</button>
+    <button data-tab="detail">Детали</button>
+    <button data-tab="text">Текст</button>
+    <button data-tab="brush">Кисть</button>
+    <button data-tab="shape">Формы</button>
+  </nav>
+</div>
+
+<div id="ov" role="dialog" aria-modal="true" aria-label="Сохранить эмодзи">
+  <div class="sheet">
+    <h2>Готово!</h2>
+    <div class="pre"><canvas id="pv" width="520" height="520" style="width:min(100%,240px);aspect-ratio:1"></canvas></div>
+    <div class="seg" id="segAn"></div>
+    <div class="seg">
+      <button class="chip on" data-size="512">512 · стикер</button>
+      <button class="chip" data-size="100">100 · эмодзи</button>
+    </div>
+    <div class="acts"><button class="primary" id="exSend">🚀 Отправить в бота</button></div>
+    <div class="acts" style="margin-top:8px">
+      <button class="ghost" id="exDl">Скачать</button>
+      <button class="ghost" id="exClose">Назад</button>
+    </div>
+    <p class="note" id="st">Анимация 2 сек, формат WebM (как у стикеров Telegram).</p>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const W=512, INK='#2A1F3D', KEY='emoji-studio-v1';
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const norm=a=>{a%=360;if(a>180)a-=360;if(a<-180)a+=360;return a;};
+
+/* ---------- Telegram ---------- */
+const tg=window.Telegram&&window.Telegram.WebApp;
+try{ if(tg){ tg.ready(); tg.expand(); tg.setHeaderColor&&tg.setHeaderColor('#17122B'); tg.setBackgroundColor&&tg.setBackgroundColor('#17122B'); tg.disableVerticalSwipes&&tg.disableVerticalSwipes(); } }catch(e){}
+const buzz=()=>{try{tg&&tg.HapticFeedback&&tg.HapticFeedback.selectionChanged();}catch(e){}};
+
+/* ---------- Палитра ---------- */
+const PALETTE=['#2A1F3D','#FFFFFF','#FFD23F','#FFB020','#FF8A3D','#FF4D6D','#FF6B8B','#B084F5','#6EA8FF','#4FE0B0','#9BE564','#8A8FA8','#7A4B2A','#000000'];
+const FACE_COLORS=['#FFD23F','#FFB020','#FF8A3D','#FF6B8B','#B084F5','#6EA8FF','#4FE0B0','#9BE564','#E9E3FF'];
+
+/* ---------- Библиотека деталей (рисуется в квадрате 100x100) ---------- */
+const C=(cx,cy,rx,ry=rx)=>`M${cx-rx} ${cy}a${rx} ${ry} 0 1 0 ${2*rx} 0a${rx} ${ry} 0 1 0 ${-2*rx} 0z`;
+const el=(d,o)=>Object.assign({d},o||{});
+const HEART='M50 92C20 68 6 52 6 33 6 18 17 8 30 8c9 0 16 5 20 12 4-7 11-12 20-12 13 0 24 10 24 25 0 19-14 35-44 59z';
+const STAR='M50 6l12.9 28.4 31 3.5-23 21 6.3 30.6L50 74.3 22.8 89.5 29.1 58.9 6.1 37.9l31-3.5z';
+const DROP='M50 6C50 6 20 40 20 62a30 30 0 0 0 60 0C80 40 50 6 50 6z';
+const SPARK='M50 6Q55 45 94 50Q55 55 50 94Q45 55 6 50Q45 45 50 6z';
+const SQ='M24 6h52a18 18 0 0 1 18 18v52a18 18 0 0 1-18 18H24a18 18 0 0 1-18-18V24a18 18 0 0 1 18-18z';
+const BLOB='M50 5C72 3 95 18 95 45 96 72 76 96 50 95 24 94 4 74 5 48 6 24 28 7 50 5z';
+const CAT='M10 10L36 26Q50 22 64 26L90 10Q96 30 92 50Q92 92 50 92Q8 92 8 50Q4 30 10 10z';
+const TRI='M50 8L94 88H6z';
+const PLUS='M38 8H62V38H92V62H62V92H38V62H8V38H38z';
+const BOLT='M58 4L22 54H46L40 96L80 42H54z';
+const BUBBLE='M14 12H86Q94 12 94 20V62Q94 70 86 70H52L28 92V70H14Q6 70 6 62V20Q6 12 14 12z';
+const ARROW='M8 40H58V16L94 50L58 84V60H8z';
+const SH=(n,d,extra)=>({n,els:[el(d,{f:'P',s:'O',w:4})].concat(extra||[])});
+const GLOSS=[el('M20 32Q26 18 42 13',{s:'#fff',w:6,a:.45})];
+
+const LIB={
+  base:[
+    SH('Круг',C(50,50,46),GLOSS), SH('Скруглённый',SQ,GLOSS), SH('Блоб',BLOB,GLOSS), SH('Кот',CAT),
+    SH('Сердце',HEART), SH('Звезда',STAR), SH('Капля',DROP)
+  ],
+  eyes:[
+    {n:'Точки',els:[el(C(30,50,6,9),{f:'P'}),el(C(70,50,6,9),{f:'P'})]},
+    {n:'Блеск',els:[el(C(30,50,11),{f:'P'}),el(C(70,50,11),{f:'P'}),el(C(34,45,4),{f:'#fff'}),el(C(74,45,4),{f:'#fff'})]},
+    {n:'Большие',els:[el(C(30,50,14),{f:'#fff',s:INK,w:3}),el(C(70,50,14),{f:'#fff',s:INK,w:3}),el(C(33,52,7),{f:'P'}),el(C(67,52,7),{f:'P'})]},
+    {n:'Радость',els:[el('M20 56Q30 38 40 56',{s:'P',w:6}),el('M60 56Q70 38 80 56',{s:'P',w:6})]},
+    {n:'Сон',els:[el('M20 46Q30 58 40 46',{s:'P',w:6}),el('M60 46Q70 58 80 46',{s:'P',w:6})]},
+    {n:'Подмигнул',els:[el('M18 56Q30 38 42 56',{s:'P',w:6}),el(C(70,50,7,10),{f:'P'})]},
+    {n:'Крестики',els:[el('M22 40L38 60M38 40L22 60M62 40L78 60M78 40L62 60',{s:'P',w:6})]},
+    {n:'Сердца',els:[el(HEART,{f:'#FF4D6D',t:[14,34,.32]}),el(HEART,{f:'#FF4D6D',t:[54,34,.32]})]},
+    {n:'Звёзды',els:[el(STAR,{f:'#FFD23F',s:INK,w:5,t:[12,32,.36]}),el(STAR,{f:'#FFD23F',s:INK,w:5,t:[52,32,.36]})]}
+  ],
+  brows:[
+    {n:'Злые',els:[el('M16 34L42 44M84 34L58 44',{s:'P',w:7})]},
+    {n:'Грустные',els:[el('M16 44L42 34M84 44L58 34',{s:'P',w:7})]},
+    {n:'Удивлённые',els:[el('M18 40Q30 26 42 38M58 38Q70 26 82 40',{s:'P',w:6})]},
+    {n:'Одна бровь',els:[el('M58 40Q70 24 84 36',{s:'P',w:7}),el('M18 38H42',{s:'P',w:7})]},
+    {n:'Густые',els:[el('M16 38Q30 30 44 38M56 38Q70 30 84 38',{s:'P',w:11})]}
+  ],
+  mouth:[
+    {n:'Улыбка',els:[el('M24 48Q50 78 76 48',{s:'P',w:6})]},
+    {n:'Смех',els:[el('M18 38Q50 98 82 38Z',{f:'#3B1530',s:'P',w:4}),el('M22 41Q50 48 78 41Q74 52 66 54Q50 58 34 54Q26 52 22 41Z',{f:'#fff'}),el('M36 56Q50 46 64 56Q50 68 36 56Z',{f:'#FF6B8B'})]},
+    {n:'Грусть',els:[el('M26 64Q50 40 74 64',{s:'P',w:6})]},
+    {n:'Прямой',els:[el('M30 54H70',{s:'P',w:6})]},
+    {n:'Язык',els:[el('M42 52V66a8 8 0 0 0 16 0V52z',{f:'#FF6B8B',s:'P',w:3}),el('M24 46Q50 70 76 46',{s:'P',w:6})]},
+    {n:'О',els:[el(C(50,54,10,13),{f:'#3B1530',s:'P',w:4})]},
+    {n:'Оскал',els:[el('M18 42H82Q82 68 50 68Q18 68 18 42Z',{f:'#fff',s:'P',w:4}),el('M50 42V67M34 43V65M66 43V65M18 55H82',{s:'P',w:2.5})]},
+    {n:'Ухмылка',els:[el('M30 56Q54 68 74 46',{s:'P',w:6})]},
+    {n:'Зигзаг',els:[el('M20 54L32 46L44 56L56 46L68 56L80 48',{s:'P',w:5})]},
+    {n:'Кошачий',els:[el('M28 48Q39 64 50 50Q61 64 72 48',{s:'P',w:5})]}
+  ],
+  detail:[
+    {n:'Румянец',els:[el(C(22,56,10,6),{f:'#FF6B8B',a:.6}),el(C(78,56,10,6),{f:'#FF6B8B',a:.6})]},
+    {n:'Слеза',els:[el(DROP,{f:'#6EC6FF',s:INK,w:4,t:[22,52,.26]})]},
+    {n:'Пот',els:[el(DROP,{f:'#9FD8FF',s:INK,w:4,t:[64,10,.26]})]},
+    {n:'Блёстки',c:'#FFD23F',els:[el(SPARK,{f:'P',s:'O',w:3,t:[10,10,.55]}),el(SPARK,{f:'P',s:'O',w:3,t:[58,6,.28]}),el(SPARK,{f:'P',s:'O',w:3,t:[62,58,.22]})]},
+    {n:'Сердце',els:[el(HEART,{f:'#FF4D6D',s:'#B31A3A',w:5,t:[10,10,.8]})]},
+    {n:'Звезда',els:[el(STAR,{f:'#FFD23F',s:'#C98A00',w:5,t:[8,8,.84]})]},
+    {n:'Очки круглые',els:[el(C(30,50,17),{f:'#BDE6FF',a:.45}),el(C(70,50,17),{f:'#BDE6FF',a:.45}),el(C(30,50,17),{s:'P',w:5}),el(C(70,50,17),{s:'P',w:5}),el('M47 48Q50 44 53 48',{s:'P',w:5})],pos:[256,214,4.4],bx:[8,28,92,72]},
+    {n:'Очки тёмные',els:[el('M14 40H46V58Q46 66 38 66H22Q14 66 14 58Z',{f:'#15101F'}),el('M54 40H86V58Q86 66 78 66H62Q54 66 54 58Z',{f:'#15101F'}),el('M46 44H54',{s:'#15101F',w:5}),el('M20 47H28M60 47H68',{s:'#fff',w:3,a:.5})],pos:[256,214,4.4],bx:[8,30,92,72]},
+    {n:'Корона',els:[el('M14 72L8 28L32 48L50 18L68 48L92 28L86 72Z',{f:'#FFC531',s:'#B8860B',w:4}),el(C(50,56,5),{f:'#FF4D6D'}),el(C(28,60,4),{f:'#6EC6FF'}),el(C(72,60,4),{f:'#4FE0B0'})],pos:[256,78,2.4],bx:[4,14,96,76]},
+    {n:'Нимб',els:[el(C(50,50,38,10),{s:'#FFD23F',w:9})],pos:[256,40,3.2],bx:[8,36,92,64]},
+    {n:'Рожки',els:[el('M20 80Q10 50 32 44Q30 64 40 76Z',{f:'#E5384F',s:'#8E1330',w:3}),el('M80 80Q90 50 68 44Q70 64 60 76Z',{f:'#E5384F',s:'#8E1330',w:3})],pos:[256,60,3.2],bx:[6,38,94,84]},
+    {n:'Бант',els:[el('M50 50L10 24V76Z',{f:'#FF6B8B',s:'#B33A58',w:4}),el('M50 50L90 24V76Z',{f:'#FF6B8B',s:'#B33A58',w:4}),el(C(50,50,9),{f:'#FF8FA8',s:'#B33A58',w:4})],pos:[380,100,2.2],bx:[4,18,96,82]},
+    {n:'Усы',c:INK,els:[el('M50 44Q38 30 18 42Q28 62 50 52Q72 62 82 42Q62 30 50 44Z',{f:'P'})],pos:[256,320,2.8],bx:[12,28,88,66]},
+    {n:'Пламя',c:'#FF8A3D',els:[el('M50 6C58 26 82 34 82 62A32 32 0 0 1 18 62C18 48 28 40 34 30C38 40 42 42 46 42C44 28 44 16 50 6Z',{f:'P',s:'O',w:4}),el('M50 40C54 54 66 58 66 72A16 16 0 0 1 34 72C34 64 40 60 42 54C46 58 48 56 50 40Z',{f:'#FFD23F'})]},
+    {n:'Гнев',els:[el('M22 22Q40 26 38 42M78 22Q60 26 62 42M22 78Q40 74 38 58M78 78Q60 74 62 58',{s:'#E5384F',w:7})],pos:[390,120,1.6]}
+  ],
+  shape:[
+    SH('Круг',C(50,50,44)), SH('Квадрат','M10 10H90V90H10z'), SH('Скруглённый',SQ), SH('Треугольник',TRI),
+    SH('Звезда',STAR), SH('Сердце',HEART), SH('Капля',DROP), SH('Плюс',PLUS), SH('Молния',BOLT),
+    SH('Облачко',BUBBLE), SH('Стрелка',ARROW), SH('Искра',SPARK),
+    {n:'Кольцо',els:[el(C(50,50,40),{s:'P',w:14})]}
+  ]
+};
+const DEF={
+  base:{pos:[256,256,4.6],bx:[3,3,97,97],c:'#FFD23F'},
+  eyes:{pos:[256,214,4.4],bx:[8,26,92,74],c:INK},
+  brows:{pos:[256,168,4.4],bx:[10,20,90,54],c:INK},
+  mouth:{pos:[256,332,3.6],bx:[12,28,88,82],c:INK},
+  detail:{pos:[256,256,3.6],bx:[0,0,100,100],c:INK},
+  shape:{pos:[256,256,2.4],bx:[3,3,97,97],c:'#FFD23F'}
+};
+for(const cat in LIB){ for(const P of LIB[cat]){
+  P.pos=P.pos||DEF[cat].pos; P.bx=P.bx||DEF[cat].bx; P.c=P.c||DEF[cat].c;
+  P.rc=P.els.some(e=>e.f==='P'||e.s==='P'||e.f==='O'||e.s==='O');
+}}
+const part=ref=>{const [c,i]=ref.split(':');return LIB[c]&&LIB[c][+i];};
+const refOf=(cat,n)=>cat+':'+LIB[cat].findIndex(p=>p.n===n);
+
+const FONTS={
+  Fredoka:{n:'Круглый',f:"'Fredoka',ui-rounded,system-ui,sans-serif",w:700},
+  Impact:{n:'Плакат',f:"Impact,'Arial Black','Haettenschweiler',sans-serif",w:700},
+  Serif:{n:'Классика',f:"Georgia,'Times New Roman',serif",w:700},
+  Mono:{n:'Печатный',f:"'Courier New',ui-monospace,monospace",w:700},
+  Hand:{n:'Рукописный',f:"'Comic Sans MS','Segoe Script','Bradley Hand',cursive",w:700}
+};
+
+/* ---------- Рисование ---------- */
+function darken(h,f=.62){
+  const n=parseInt(h.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.round(r*f);g=Math.round(g*f);b=Math.round(b*f);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function drawEl(ctx,e,c1){
+  const p=new Path2D(e.d);
+  const col=v=>v==='P'?c1:(v==='O'?darken(c1):v);
+  ctx.save();
+  if(e.t){ctx.translate(e.t[0],e.t[1]);ctx.scale(e.t[2],e.t[2]);}
+  if(e.a!=null)ctx.globalAlpha*=e.a;
+  if(e.f){ctx.fillStyle=col(e.f);ctx.fill(p);}
+  if(e.s){ctx.strokeStyle=col(e.s);ctx.lineWidth=e.w||4;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(p);}
+  ctx.restore();
+}
+const LH=112;
+const mctx=document.createElement('canvas').getContext('2d');
+function textBox(o){
+  const F=FONTS[o.font]||FONTS.Fredoka;
+  mctx.font=`${F.w} 100px ${F.f}`;
+  const lines=o.t.split('\n'); let w=10;
+  for(const l of lines)w=Math.max(w,mctx.measureText(l).width);
+  const h=lines.length*LH, pad=(o.ow||0)+8;
+  return [-w/2-pad,-h/2-pad,w/2+pad,h/2+pad];
+}
+function drawText(ctx,o){
+  const F=FONTS[o.font]||FONTS.Fredoka;
+  ctx.font=`${F.w} 100px ${F.f}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+  const lines=o.t.split('\n'), y0=-(lines.length-1)*LH/2;
+  lines.forEach((ln,i)=>{
+    const y=y0+i*LH;
+    if(o.ow>0){ctx.lineWidth=o.ow*2;ctx.strokeStyle=o.oc;ctx.strokeText(ln,0,y);}
+    ctx.fillStyle=o.c;ctx.fillText(ln,0,y);
+  });
+}
+function drawStroke(ctx,o){
+  const pts=o.pts;
+  ctx.strokeStyle=o.c;ctx.fillStyle=o.c;ctx.lineWidth=o.w;ctx.lineCap='round';ctx.lineJoin='round';
+  if(pts.length<2){ctx.beginPath();ctx.arc(pts[0][0],pts[0][1],o.w/2,0,Math.PI*2);ctx.fill();return;}
+  ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length-1;i++){
+    const mx=(pts[i][0]+pts[i+1][0])/2,my=(pts[i][1]+pts[i+1][1])/2;
+    ctx.quadraticCurveTo(pts[i][0],pts[i][1],mx,my);
+  }
+  const l=pts[pts.length-1];ctx.lineTo(l[0],l[1]);ctx.stroke();
+}
+function strokeBox(o){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const p of o.pts){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);}
+  const pd=o.w/2+4;return [x0-pd,y0-pd,x1+pd,y1+pd];
+}
+function boxOf(o){
+  if(o.k==='part'){const b=part(o.ref).bx;return [b[0]-50,b[1]-50,b[2]-50,b[3]-50];}
+  return o.k==='text'?textBox(o):strokeBox(o);
+}
+function drawObj(ctx,o){
+  ctx.save();
+  ctx.translate(o.x,o.y);ctx.rotate(o.r*Math.PI/180);ctx.scale(o.s*(o.fx||1),o.s);
+  if(o.k==='part'){ctx.translate(-50,-50);for(const e of part(o.ref).els)drawEl(ctx,e,o.c);}
+  else if(o.k==='text')drawText(ctx,o);
+  else drawStroke(ctx,o);
+  ctx.restore();
+}
+function worldOf(o,lx,ly){
+  const sx=o.s*(o.fx||1),sy=o.s,a=o.r*Math.PI/180,x=lx*sx,y=ly*sy;
+  return {x:o.x+x*Math.cos(a)-y*Math.sin(a),y:o.y+x*Math.sin(a)+y*Math.cos(a)};
+}
+
+/* ---------- Состояние ---------- */
+let objs=[],nextId=1,sel=null,cur=null,K=1;
+let tab='base',faceSub='eyes',nextColor='#FFD23F';
+const brush={size:14,color:INK,erase:false};
+const textState={t:'Привет',font:'Fredoka',c:'#FFFFFF',oc:INK,ow:8};
+const selObj=()=>objs.find(o=>o.id===sel)||null;
+const isRecolor=o=>o.k!=='part'||part(o.ref).rc;
+
+const cv=$('#cv'),ctx=cv.getContext('2d'),board=$('#board');
+let pend=false;
+function renderScene(c,k,ui){
+  c.setTransform(k,0,0,k,0,0);c.clearRect(0,0,W,W);
+  for(const o of objs)drawObj(c,o);
+  if(!ui)return;
+  if(cur)drawObj(c,{k:'draw',pts:cur.pts.map(p=>[p.x,p.y]),w:cur.w,c:cur.c,x:0,y:0,s:1,r:0,fx:1});
+  const o=selObj();
+  if(o){
+    const b=boxOf(o);
+    c.save();c.translate(o.x,o.y);c.rotate(o.r*Math.PI/180);c.scale(o.s*(o.fx||1),o.s);
+    c.lineWidth=2.5/o.s;c.setLineDash([7/o.s,5/o.s]);c.strokeStyle='#FFD23F';
+    c.strokeRect(b[0],b[1],b[2]-b[0],b[3]-b[1]);c.restore();
+    const h=worldOf(o,b[2],b[3]);
+    c.beginPath();c.arc(h.x,h.y,13,0,Math.PI*2);c.fillStyle='#FFD23F';c.fill();
+    c.lineWidth=3;c.strokeStyle=INK;c.stroke();
+    c.beginPath();c.arc(h.x,h.y,3.5,0,Math.PI*2);c.fillStyle=INK;c.fill();
+  }
+}
+function draw(){
+  if(pend)return;pend=true;
+  requestAnimationFrame(()=>{pend=false;renderScene(ctx,K,true);$('#empty').hidden=objs.length>0||!!cur;});
+}
+function fit(){
+  const st=$('#stage'),cs=getComputedStyle(st);
+  const w=st.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+  const h=st.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+  const side=Math.max(120,Math.floor(Math.min(w,h)));
+  board.style.width=board.style.height=side+'px';
+  const dpr=Math.min(window.devicePixelRatio||1,2.5);
+  cv.width=cv.height=Math.round(side*dpr);
+  cv.style.width=cv.style.height=side+'px';
+  K=cv.width/W;draw();
+}
+
+/* ---------- История ---------- */
+let hist=[],hi=-1;
+const snap=()=>JSON.stringify({objs,nextId});
+function persist(){try{localStorage.setItem(KEY,snap());}catch(e){}}
+function updUndo(){$('#bUndo').disabled=hi<=0;$('#bRedo').disabled=hi>=hist.length-1;}
+function commit(){hist=hist.slice(0,hi+1);hist.push(snap());if(hist.length>80)hist.shift();hi=hist.length-1;persist();updUndo();}
+function restore(s){
+  const d=JSON.parse(s);objs=d.objs;nextId=d.nextId;
+  if(!objs.some(o=>o.id===sel))sel=null;
+  syncStrip();draw();updUndo();persist();
+}
+function undo(){if(hi>0){hi--;restore(hist[hi]);}}
+function redo(){if(hi<hist.length-1){hi++;restore(hist[hi]);}}
+
+/* ---------- Выбор и действия ---------- */
+function select(id){sel=id;syncStrip();if(tab==='text')renderPanel();draw();}
+function addPart(ref){
+  const P=part(ref),cat=ref.split(':')[0];
+  const color=(cat==='base'||cat==='shape')?nextColor:P.c;
+  const o={id:nextId++,k:'part',ref,x:P.pos[0],y:P.pos[1],s:P.pos[2],r:0,fx:1,c:color};
+  objs.push(o);buzz();commit();select(o.id);
+}
+function addText(){
+  const t=(textState.t||'').trim()||'Привет';
+  const o={id:nextId++,k:'text',t,font:textState.font,c:textState.c,oc:textState.oc,ow:textState.ow,x:256,y:256,s:1.1,r:0,fx:1};
+  objs.push(o);buzz();commit();select(o.id);
+}
+function syncStrip(){
+  const o=selObj(),st=$('#strip');
+  if(!o){st.hidden=true;return;}
+  st.hidden=false;
+  $('#rngS').value=Math.round(o.s*100);$('#rngR').value=Math.round(o.r);
+  const cr=$('#stripColors'),rc=isRecolor(o);
+  cr.hidden=!rc;if(rc)cr.innerHTML=swHtml(o.c,'sel');
+}
+$('#strip').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');
+  if(b){
+    const o=selObj();if(!o)return;const a=b.dataset.act;
+    if(a==='flip')o.fx=-(o.fx||1);
+    else if(a==='dup'){const n=JSON.parse(JSON.stringify(o));n.id=nextId++;n.x+=24;n.y+=24;objs.push(n);sel=n.id;}
+    else if(a==='up'){const i=objs.indexOf(o);objs.splice(i,1);objs.push(o);}
+    else if(a==='down'){const i=objs.indexOf(o);objs.splice(i,1);objs.unshift(o);}
+    else if(a==='del'){objs=objs.filter(x=>x!==o);sel=null;}
+    buzz();commit();syncStrip();draw();return;
+  }
+  const s=e.target.closest('button[data-sw]');
+  if(s)setColor('sel',s.dataset.c,false);
+});
+$('#strip').addEventListener('input',e=>{
+  const o=selObj();if(!o)return;const t=e.target;
+  if(t.id==='rngS'){o.s=clamp(t.value/100,.1,8);draw();}
+  else if(t.id==='rngR'){o.r=+t.value;draw();}
+  else if(t.matches('input[type=color]'))setColor('sel',t.value,true);
+});
+$('#strip').addEventListener('change',()=>commit());
+
+/* ---------- Цвета ---------- */
+function swHtml(cur,tag){
+  const same=c=>c.toLowerCase()===String(cur).toLowerCase();
+  return PALETTE.map(c=>`<button class="sw${same(c)?' on':''}" data-sw="${tag}" data-c="${c}" style="background:${c}" aria-label="Цвет ${c}"></button>`).join('')
+    +`<label class="sw custom" aria-label="Свой цвет"><input type="color" data-sw="${tag}" value="${/^#[0-9a-f]{6}$/i.test(cur)?cur:'#ffffff'}"></label>`;
+}
+function setColor(tag,c,live){
+  if(tag==='next')nextColor=c;
+  else if(tag==='brush')brush.color=c;
+  else if(tag==='tfill'){textState.c=c;const o=selObj();if(o&&o.k==='text')o.c=c;}
+  else if(tag==='tout'){textState.oc=c;const o=selObj();if(o&&o.k==='text')o.oc=c;}
+  else if(tag==='sel'){const o=selObj();if(o)o.c=c;}
+  draw();
+  if(!live){commit();if(tag==='sel')syncStrip();renderPanel();}
+}
+
+/* ---------- Панель ---------- */
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const tiles=cat=>'<div class="tiles">'+LIB[cat].map((P,i)=>`<button class="tile" data-add="${cat}:${i}" title="${P.n}" aria-label="${P.n}"><canvas data-th="${cat}:${i}"></canvas></button>`).join('')+'</div>';
+function thumb(c,ref,color){
+  const P=part(ref),d=window.devicePixelRatio||1,n=Math.round(56*d);
+  c.width=c.height=n;const x=c.getContext('2d');
+  const b=P.bx,w=b[2]-b[0],h=b[3]-b[1],sc=n/Math.max(w,h)*.9;
+  x.translate(n/2,n/2);x.scale(sc,sc);x.translate(-(b[0]+b[2])/2,-(b[1]+b[3])/2);
+  for(const e of P.els)drawEl(x,e,color||P.c);
+}
+function renderPanel(){
+  const p=$('#panel');let h='';
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  p.style.height=tab==='text'?'200px':tab==='brush'?'150px':'136px';
+  if(tab==='base')h=`<div class="srow sw-row">${swHtml(nextColor,'next')}</div>${tiles('base')}`;
+  else if(tab==='shape')h=`<div class="srow sw-row">${swHtml(nextColor,'next')}</div>${tiles('shape')}`;
+  else if(tab==='face'){
+    const subs={eyes:'Глаза',brows:'Брови',mouth:'Рот'};
+    h='<div class="chips">'+Object.keys(subs).map(k=>`<button class="chip${faceSub===k?' on':''}" data-sub="${k}">${subs[k]}</button>`).join('')+'</div>'+tiles(faceSub);
+  }
+  else if(tab==='detail')h=tiles('detail');
+  else if(tab==='text'){
+    const o=selObj(),t=o&&o.k==='text'?o:textState;
+    h=`<div class="srow"><input id="txt" class="field" type="text" maxlength="24" placeholder="Твой текст" value="${esc(t.t)}"><button class="addbtn" id="addText">Добавить</button></div>
+    <div class="chips">${Object.keys(FONTS).map(k=>`<button class="chip${t.font===k?' on':''}" data-font="${k}">${FONTS[k].n}</button>`).join('')}</div>
+    <span class="lbl">Цвет текста</span><div class="srow sw-row">${swHtml(t.c,'tfill')}</div>
+    <span class="lbl">Цвет контура</span><div class="srow sw-row">${swHtml(t.oc,'tout')}</div>
+    <label class="lbl">Толщина контура<input id="tow" type="range" min="0" max="18" value="${t.ow}"></label>`;
+  }
+  else if(tab==='brush'){
+    h=`<div class="chips"><button class="chip${!brush.erase?' on':''}" data-brush="draw">Кисть</button><button class="chip${brush.erase?' on':''}" data-brush="erase">Ластик</button></div>
+    <label class="lbl">Толщина<input id="bsz" type="range" min="3" max="60" value="${brush.size}"></label>
+    <div class="srow sw-row">${swHtml(brush.color,'brush')}</div>`;
+  }
+  p.innerHTML=h;
+  p.querySelectorAll('canvas[data-th]').forEach(c=>{
+    const cat=c.dataset.th.split(':')[0];
+    thumb(c,c.dataset.th,(cat==='base'||cat==='shape')?nextColor:null);
+  });
+}
+$('#panel').addEventListener('click',e=>{
+  const a=e.target.closest('[data-add]');if(a){addPart(a.dataset.add);return;}
+  const s=e.target.closest('button[data-sw]');if(s){setColor(s.dataset.sw,s.dataset.c,false);return;}
+  const sub=e.target.closest('[data-sub]');if(sub){faceSub=sub.dataset.sub;renderPanel();return;}
+  const f=e.target.closest('[data-font]');
+  if(f){textState.font=f.dataset.font;const o=selObj();if(o&&o.k==='text'){o.font=f.dataset.font;commit();}renderPanel();draw();return;}
+  const b=e.target.closest('[data-brush]');if(b){brush.erase=b.dataset.brush==='erase';renderPanel();return;}
+  if(e.target.id==='addText'){addText();}
+});
+$('#panel').addEventListener('input',e=>{
+  const t=e.target;
+  if(t.matches('input[type=color][data-sw]'))setColor(t.dataset.sw,t.value,true);
+  else if(t.id==='txt'){textState.t=t.value;const o=selObj();if(o&&o.k==='text'){o.t=t.value||' ';draw();}}
+  else if(t.id==='tow'){textState.ow=+t.value;const o=selObj();if(o&&o.k==='text'){o.ow=+t.value;draw();}}
+  else if(t.id==='bsz')brush.size=+t.value;
+});
+$('#panel').addEventListener('change',e=>{
+  const t=e.target;
+  if(t.matches('input[type=color][data-sw]')||t.id==='txt'||t.id==='tow'){commit();renderPanel();}
+});
+$('#tabs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-tab]');if(!b)return;
+  tab=b.dataset.tab;buzz();
+  if(tab==='brush')sel=null;
+  syncStrip();renderPanel();draw();
+});
+
+/* ---------- Жесты на холсте ---------- */
+const hc=document.createElement('canvas');hc.width=hc.height=15;
+const hx=hc.getContext('2d',{willReadFrequently:true});
+function hit(o,p){
+  hx.setTransform(1,0,0,1,0,0);hx.clearRect(0,0,15,15);
+  hx.setTransform(1,0,0,1,7-p.x,7-p.y);drawObj(hx,o);
+  const d=hx.getImageData(0,0,15,15).data;
+  for(let i=3;i<d.length;i+=4)if(d[i]>25)return true;
+  return false;
+}
+function pick(p){for(let i=objs.length-1;i>=0;i--)if(hit(objs[i],p))return objs[i];return null;}
+function handlePos(o){const b=boxOf(o);return worldOf(o,b[2],b[3]);}
+function pt(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*W/r.height};}
+function eraseAt(p){
+  let ch=false;
+  for(let i=objs.length-1;i>=0;i--){
+    const o=objs[i];if(o.k!=='draw')continue;
+    for(const q of o.pts){
+      const w=worldOf(o,q[0],q[1]);
+      if(Math.hypot(w.x-p.x,w.y-p.y)<o.w*o.s/2+brush.size/2+4){objs.splice(i,1);ch=true;break;}
+    }
+  }
+  if(ch)draw();return ch;
+}
+function finishStroke(){
+  if(!cur)return;
+  const pts=cur.pts;if(pts.length===1)pts.push({x:pts[0].x+.01,y:pts[0].y});
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const p of pts){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);}
+  const cx=(x0+x1)/2,cy=(y0+y1)/2;
+  objs.push({id:nextId++,k:'draw',pts:pts.map(p=>[+(p.x-cx).toFixed(1),+(p.y-cy).toFixed(1)]),w:cur.w,c:cur.c,x:cx,y:cy,s:1,r:0,fx:1});
+  cur=null;commit();draw();
+}
+const ptrs=new Map();let drag=null,pinch=null,erasing=false,erased=false;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  const p=pt(e);ptrs.set(e.pointerId,p);
+  if(ptrs.size===2){
+    cur=null;drag=null;
+    const o=selObj();
+    if(o){
+      const [a,b]=[...ptrs.values()];
+      pinch={d0:Math.hypot(b.x-a.x,b.y-a.y)||1,a0:Math.atan2(b.y-a.y,b.x-a.x),s0:o.s,r0:o.r,x0:o.x,y0:o.y,mx0:(a.x+b.x)/2,my0:(a.y+b.y)/2,moved:false};
+    }
+    return;
+  }
+  if(ptrs.size>2)return;
+  if(tab==='brush'){
+    if(brush.erase){erasing=true;erased=false;if(eraseAt(p))erased=true;}
+    else{cur={pts:[p],w:brush.size,c:brush.color};draw();}
+    return;
+  }
+  const o=selObj();
+  if(o){
+    const h=handlePos(o);
+    if(Math.hypot(h.x-p.x,h.y-p.y)<28){
+      drag={type:'handle',d0:Math.hypot(p.x-o.x,p.y-o.y)||1,a0:Math.atan2(p.y-o.y,p.x-o.x),s0:o.s,r0:o.r,moved:false};
+      return;
+    }
+  }
+  const t=pick(p);
+  if(t){sel=t.id;syncStrip();drag={type:'move',ox:t.x-p.x,oy:t.y-p.y,moved:false};draw();}
+  else{select(null);}
+});
+cv.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId))return;
+  const p=pt(e);ptrs.set(e.pointerId,p);
+  if(pinch&&ptrs.size>=2){
+    const o=selObj();if(!o)return;
+    const [a,b]=[...ptrs.values()];
+    const d=Math.hypot(b.x-a.x,b.y-a.y),an=Math.atan2(b.y-a.y,b.x-a.x);
+    o.s=clamp(pinch.s0*d/pinch.d0,.1,12);o.r=norm(pinch.r0+(an-pinch.a0)*180/Math.PI);
+    o.x=pinch.x0+(a.x+b.x)/2-pinch.mx0;o.y=pinch.y0+(a.y+b.y)/2-pinch.my0;
+    pinch.moved=true;$('#rngS').value=Math.round(o.s*100);$('#rngR').value=Math.round(o.r);draw();return;
+  }
+  if(cur){
+    const l=cur.pts[cur.pts.length-1];
+    if(Math.hypot(p.x-l.x,p.y-l.y)>=2){cur.pts.push(p);draw();}
+    return;
+  }
+  if(erasing){if(eraseAt(p))erased=true;return;}
+  if(!drag)return;
+  const o=selObj();if(!o)return;
+  if(drag.type==='move'){o.x=p.x+drag.ox;o.y=p.y+drag.oy;}
+  else{
+    const d=Math.hypot(p.x-o.x,p.y-o.y),an=Math.atan2(p.y-o.y,p.x-o.x);
+    o.s=clamp(drag.s0*d/drag.d0,.1,12);o.r=norm(drag.r0+(an-drag.a0)*180/Math.PI);
+    $('#rngS').value=Math.round(o.s*100);$('#rngR').value=Math.round(o.r);
+  }
+  drag.moved=true;draw();
+});
+function endPtr(e){
+  if(!ptrs.has(e.pointerId))return;
+  ptrs.delete(e.pointerId);
+  if(pinch&&ptrs.size<2){if(pinch.moved)commit();pinch=null;}
+  if(ptrs.size===0){
+    if(drag){if(drag.moved)commit();drag=null;}
+    if(cur)finishStroke();
+    if(erasing){erasing=false;if(erased)commit();}
+  }
+}
+cv.addEventListener('pointerup',endPtr);
+cv.addEventListener('pointercancel',endPtr);
+
+/* ---------- Кнопки шапки ---------- */
+$('#bUndo').onclick=undo;$('#bRedo').onclick=redo;
+$('#bClear').onclick=()=>{if(!objs.length)return;objs=[];sel=null;commit();syncStrip();draw();};
+$('#bRand').onclick=()=>{
+  const rnd=a=>a[Math.floor(Math.random()*a.length)];
+  objs=[];sel=null;
+  const add=(ref,color)=>{
+    const P=part(ref);
+    objs.push({id:nextId++,k:'part',ref,x:P.pos[0],y:P.pos[1],s:P.pos[2],r:0,fx:1,c:color||P.c});
+  };
+  const faces=['Круг','Скруглённый','Блоб','Кот'];
+  add(refOf('base',rnd(faces)),rnd(FACE_COLORS));
+  add(rnd(LIB.eyes.map((_,i)=>'eyes:'+i)));
+  add(rnd(LIB.mouth.map((_,i)=>'mouth:'+i)));
+  if(Math.random()<.55)add(rnd(LIB.brows.map((_,i)=>'brows:'+i)));
+  if(Math.random()<.45)add(refOf('detail',rnd(['Румянец','Блёстки','Пот','Очки круглые','Очки тёмные','Корона','Рожки','Нимб'])));
+  buzz();commit();syncStrip();draw();
+};
+
+/* ---------- Анимация, сохранение, отправка в бота ---------- */
+const ANIMS={none:'Статика',bounce:'Прыжок',pulse:'Пульс',shake:'Тряска',spin:'Вращение',wobble:'Качание',beat:'Сердце'};
+let anim='none',exSize=512,pvOn=false;
+const st=t=>{$('#st').textContent=t;};
+let BOT=(location.hash.match(/[#&]t=([^&]+)/)||[])[1];
+try{if(BOT)sessionStorage.setItem('bt',BOT);else BOT=sessionStorage.getItem('bt');}catch(e){}
+function renderAnim(c,k,u,a){
+  const T=Math.PI*2*u;let dx=0,dy=0,sx=1,sy=1,r=0;
+  if(a==='bounce'){const h=Math.abs(Math.sin(T/2));dy=-h*70;sx=1+.08*(1-h);sy=1-.08*(1-h);}
+  else if(a==='pulse'){sx=sy=1+.1*Math.sin(T);}
+  else if(a==='shake'){dx=Math.sin(T*4)*16;}
+  else if(a==='spin'){r=T;sx=sy=.78;}
+  else if(a==='wobble'){r=Math.sin(T)*.3;}
+  else if(a==='beat'){const p=Math.pow(Math.max(0,Math.sin(T*2)),2);sx=sy=1+.14*p;}
+  c.setTransform(k,0,0,k,0,0);c.clearRect(0,0,W,W);c.save();
+  c.translate(W/2+dx,W/2+dy);c.rotate(r);c.scale(sx,sy);c.translate(-W/2,-W/2);
+  for(const o of objs)drawObj(c,o);c.restore();
+}
+const pv=$('#pv'),pvx=pv.getContext('2d');
+function loop(){if(!pvOn)return;renderAnim(pvx,pv.width/W,(performance.now()%2000)/2000,anim);requestAnimationFrame(loop);}
+const seg=$('#segAn');
+for(const k in ANIMS){const b=document.createElement('button');b.className='chip'+(k===anim?' on':'');b.textContent=ANIMS[k];
+  b.onclick=()=>{anim=k;seg.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b));buzz();};seg.appendChild(b);}
+function stillBlob(n){const c=document.createElement('canvas');c.width=c.height=n;renderAnim(c.getContext('2d'),n/W,0,'none');return new Promise(r=>c.toBlob(r,'image/png'));}
+async function webmBlob(n){
+  if(!window.MediaRecorder)throw new Error('Браузер не умеет записывать видео');
+  const c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d');
+  const mt=['video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));
+  const rec=new MediaRecorder(c.captureStream(30),{mimeType:mt,videoBitsPerSecond:n>200?650000:200000});
+  const ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  const done=new Promise(r=>rec.onstop=r);
+  renderAnim(x,n/W,0,anim);rec.start();
+  const t0=performance.now();
+  await new Promise(res=>{(function f(){const u=(performance.now()-t0)/2000;if(u>=1)return res();renderAnim(x,n/W,u,anim);requestAnimationFrame(f);})();});
+  rec.stop();await done;return new Blob(ch,{type:'video/webm'});
+}
+const makeBlob=()=>anim==='none'?stillBlob(exSize):webmBlob(exSize);
+$('#bSave').onclick=()=>{
+  if(!objs.length)return;
+  sel=null;syncStrip();draw();$('#ov').classList.add('show');pvOn=true;loop();
+};
+$('#exClose').onclick=()=>{pvOn=false;$('#ov').classList.remove('show');};
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{
+  exSize=+b.dataset.size;
+  document.querySelectorAll('[data-size]').forEach(x=>x.classList.toggle('on',x===b));
+});
+$('#exDl').onclick=async()=>{
+  try{st('Готовлю файл…');const bl=await makeBlob();const a=document.createElement('a');
+    a.href=URL.createObjectURL(bl);a.download=anim==='none'?`emoji-${exSize}.png`:`emoji-${exSize}.webm`;a.click();st('Готово.');}
+  catch(e){st('Ошибка: '+e.message);}
+};
+$('#exSend').onclick=async()=>{
+  const uid=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id;
+  if(!uid||!BOT){st('Открой студию кнопкой «Open» в боте.');return;}
+  const btn=$('#exSend');btn.disabled=true;
+  try{
+    st(anim==='none'?'Отправляю…':'Записываю анимацию 2 сек…');
+    const bl=await makeBlob();st('Отправляю…');
+    const fd=new FormData();fd.append('chat_id',uid);
+    fd.append('document',bl,anim==='none'?'emoji.png':'emoji.webm');
+    const r=await fetch(`https://api.telegram.org/bot${BOT}/sendDocument`,{method:'POST',body:fd}).then(r=>r.json());
+    if(!r.ok)throw new Error(r.description||'Telegram отказал');
+    tg.sendData(JSON.stringify({fid:r.result.document.file_id,kind:exSize===100?'emoji':'sticker',anim:anim!=='none'}));
+  }catch(e){st('Ошибка: '+e.message);btn.disabled=false;}
+};
+
+/* ---------- Старт ---------- */
+try{
+  const d=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(d&&Array.isArray(d.objs)){
+    objs=d.objs.filter(o=>o.k!=='part'||part(o.ref));
+    nextId=d.nextId||objs.reduce((m,o)=>Math.max(m,o.id),0)+1;
+  }
+}catch(e){}
+commit();renderPanel();syncStrip();
+if('ResizeObserver' in window)new ResizeObserver(fit).observe($('#stage'));
+window.addEventListener('resize',fit);
+fit();
+try{document.fonts&&document.fonts.load('700 100px Fredoka').then(()=>{draw();});}catch(e){}
+})();
+</script>
+</body>
+</html>
